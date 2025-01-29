@@ -1,0 +1,22 @@
+{
+	"dependencies": {
+		"express": "*",
+		"redis": "2.8.0",
+		"node-zookeeper-client": "1.1.1",
+		"cors": "2.8.5",
+		"mongoose": "6.2.1",
+		"dotenv": "^10.0.0"
+	},
+	"scripts": {
+		"start": "node server.js",
+		"test": "jest"
+	},
+	"devDependencies": {
+		"jest": "^29.7.0",
+		"supertest": "^7.0.0"
+	},
+	"jest": {
+		"roots": ["<rootDir>/src"]
+	}
+
+}

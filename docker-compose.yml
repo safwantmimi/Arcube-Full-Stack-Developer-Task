@@ -1,0 +1,128 @@
+version: '3'
+services:
+  node-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    depends_on:
+        mongo:
+          condition: service_started
+        test-server:
+          condition: service_started
+    volumes:
+      - /app/node_modules
+      - ./server:/app
+    ports:
+      - '8081'
+    expose:
+      - '8081'
+    env_file:
+      - ./.env
+    restart: always
+    networks:
+      - app-network
+
+  client-server:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    ports:
+      - '3000:3000'
+    env_file:
+      - ./.env
+    restart: always
+    networks:
+      - app-network
+
+  redis-server:
+    image: redis
+    ports:
+      - '6379:6379'
+    restart: always
+    env_file:
+      - ./.env
+    networks:
+      - app-network
+
+  zookeeper-server:
+    image: zookeeper
+    ports:
+      - '2181:2181'
+    restart: always
+    env_file:
+      - ./.env
+    networks:
+      - app-network
+
+  test-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    command: npm run test -- --watchAll=true
+    environment:
+      - CI=true
+    volumes:
+      - /app/node_modules
+      - ./server:/app
+    depends_on:
+      - mongo
+      - redis-server
+    restart: always
+
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - node-server
+    env_file:
+      - ./.env
+    ports:
+      - '4000:80'
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${REACT_APP_MONGODB_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${REACT_APP_MONGODB_PASSWORD}
+      - MONGODB_DB=${REACT_APP_MONGODB}
+    ports:
+      - "27017:27017"
+    env_file:
+      - ./.env
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
+  mongo-express:
+    image: mongo-express
+    container_name: mexpress
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${REACT_APP_MONGODB_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${REACT_APP_MONGODB_PASSWORD}
+      - ME_CONFIG_MONGODB_URL=mongodb://${REACT_APP_MONGODB_USERNAME}:${REACT_APP_MONGODB_PASSWORD}@mongo:27017/?authSource=admin
+      - ME_CONFIG_BASICAUTH_USERNAME=mexpress
+      - ME_CONFIG_BASICAUTH_PASSWORD=mexpress
+    links:
+      - mongo
+    restart: unless-stopped
+    ports:
+      - "8080:8081"
+    env_file:
+      - ./.env
+    networks:
+      - app-network
+
+volumes:
+  mongo-data:
+
+networks:
+  app-network:
+    driver: bridge
